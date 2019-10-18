@@ -50,3 +50,6 @@ class Abc(object):
 		return [self.b,
 		        self.d   # (2 tabs + 8 spaces)
 		       ]  # (2 tabs + 7 spaces)
+
+	def j(self):
+		return {'yes': 1, 'yes': 2}

@@ -1,6 +1,8 @@
 import os
 
-from pyautodev.checkers import PyLint, PyCodeStyle
+from pyflakes.messages import MultiValueRepeatedKeyLiteral
+
+from pyautodev.checkers import PyLint, PyCodeStyle, PyFlakes
 
 
 def test_pylint():
@@ -10,17 +12,31 @@ def test_pylint():
 
     msgs = checker.check([test_file])
 
-    assert len(msgs) == 2
+    assert len(msgs) == 4
 
-    assert msgs[0].msg_id == "C0330"
-    assert msgs[0].symbol == "bad-continuation"
-    assert msgs[0].line == 26
-    assert msgs[0].column == 0
+    msg = msgs[0]
+    assert msg.msg_id == "C0330"
+    assert msg.symbol == "bad-continuation"
+    assert msg.line == 26
+    assert msg.column == 0
 
-    assert msgs[1].msg_id == "C0330"
-    assert msgs[1].symbol == "bad-continuation"
-    assert msgs[1].line == 40
-    assert msgs[1].column == 0
+    msg = msgs[1]
+    assert msg.msg_id == "C0330"
+    assert msg.symbol == "bad-continuation"
+    assert msg.line == 40
+    assert msg.column == 0
+
+    msg = msgs[2]
+    assert msg.msg_id == "W0109"
+    assert msg.symbol == "duplicate-key"
+    assert msg.line == 55
+    assert msg.column == 9
+
+    msg = msgs[3]
+    assert msg.msg_id == "R0201"
+    assert msg.symbol == "no-self-use"
+    assert msg.line == 54
+    assert msg.column == 1
 
 
 def test_pycodestyle():
@@ -30,7 +46,7 @@ def test_pycodestyle():
 
     msgs = checker.check([test_file])
 
-    assert len(msgs) == 62
+    assert len(msgs) == 65
 
     code_lines = {}
     for msg in msgs:
@@ -69,9 +85,31 @@ def test_pycodestyle():
         44,
         49,
         50,
+        55,
     ]
     assert code_lines["E123"] == [14]
     assert code_lines["E124"] == [40, 52]
     assert code_lines["E126"] == [26]
     assert code_lines["E261"] == [45, 46]
     assert code_lines["E501"] == [2]
+
+
+def test_pyflakes():
+    test_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+    test_file = os.path.join(test_dir, "bad_continuation_tabs.py")
+    checker = PyFlakes()
+
+    msgs = checker.check([test_file])
+
+    assert len(msgs) == 2
+
+    msg = msgs[0]
+    assert isinstance(msg, MultiValueRepeatedKeyLiteral)
+    assert msg.lineno == 55
+    assert msg.col == 10
+
+    msg = msgs[1]
+    assert isinstance(msg, MultiValueRepeatedKeyLiteral)
+    assert msg.lineno == 55
+    assert msg.col == 20
+
