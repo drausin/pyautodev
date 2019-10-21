@@ -20,8 +20,8 @@ class PyLint:
 
         self._inner = checker
 
-    def check(self, filenames: List[str]) -> List[Message]:
-        self._inner.check(filenames)
+    def check(self, filepaths: List[str]) -> List[Message]:
+        self._inner.check(filepaths)
         return self._inner.reporter.messages
 
 
@@ -35,8 +35,8 @@ class PyCodeStyle:
         )
         self._style.options.max_line_length = 88
 
-    def check(self, filenames: List[str]):
-        report = self._style.check_files(filenames)
+    def check(self, filepaths: List[str]):
+        report = self._style.check_files(filepaths)
         return report.errors
 
     class ErrorReport(BaseReport):
@@ -54,10 +54,10 @@ class PyCodeStyle:
 
 class PyFlakes:
 
-    def check(self, filenames: List[str]):
+    def check(self, filepaths: List[str]):
         reporter = PyFlakes.CollectingReporter()
-        for filename in filenames:
-            checkPath(filename, reporter=reporter)
+        for filepath in filepaths:
+            checkPath(filepath, reporter=reporter)
 
         return reporter.errors + reporter.flakes
 
@@ -68,11 +68,11 @@ class PyFlakes:
             self.errors = []
             self.flakes = []
 
-        def unexpectedError(self, filename, msg):
-            self.errors.append((filename, msg))
+        def unexpectedError(self, filepath, msg):
+            self.errors.append((filepath, msg))
 
-        def syntaxError(self, filename, msg, lineno, offset, text):
-            self.errors.append((filename, msg, lineno, offset, text))
+        def syntaxError(self, filepath, msg, lineno, offset, text):
+            self.errors.append((filepath, msg, lineno, offset, text))
 
         def flake(self, message):
             self.flakes.append(message)

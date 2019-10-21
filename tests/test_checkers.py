@@ -4,13 +4,14 @@ from pyflakes.messages import MultiValueRepeatedKeyLiteral
 
 from pyautodev.checkers import PyLint, PyCodeStyle, PyFlakes
 
+TEST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+TEST_FILE = os.path.join(TEST_DIR, "bad_continuation_tabs.py")
+
 
 def test_pylint():
-    test_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-    test_file = os.path.join(test_dir, "bad_continuation_tabs.py")
     checker = PyLint(options={"indent-string": "\t", "indent-after-paren": 1})
 
-    msgs = checker.check([test_file])
+    msgs = checker.check([TEST_FILE])
 
     assert len(msgs) == 4
 
@@ -40,11 +41,9 @@ def test_pylint():
 
 
 def test_pycodestyle():
-    test_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-    test_file = os.path.join(test_dir, "bad_continuation_tabs.py")
     checker = PyCodeStyle()
 
-    msgs = checker.check([test_file])
+    msgs = checker.check([TEST_FILE])
 
     assert len(msgs) == 65
 
@@ -95,11 +94,9 @@ def test_pycodestyle():
 
 
 def test_pyflakes():
-    test_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-    test_file = os.path.join(test_dir, "bad_continuation_tabs.py")
     checker = PyFlakes()
 
-    msgs = checker.check([test_file])
+    msgs = checker.check([TEST_FILE])
 
     assert len(msgs) == 2
 
