@@ -21,7 +21,13 @@ class Message:
 
     def __str__(self):
         return ":".join(
-            [self.filepath, self.line, self.column, self.code, self.description]
+            [
+                self.filepath,
+                str(self.line),
+                str(self.column),
+                self.code,
+                self.description,
+            ]
         )
 
 

@@ -17,10 +17,10 @@ class Processor:
         self.black = Black()
 
     def process(self, filepaths: List[str]):
+        self.black.transform(filepaths)
+
         pylint_msgs = self.pylint.check(filepaths)
         pyflakes_msgs = self.pyflakes.check(filepaths)
-
-        self.black.transform(filepaths)
 
         # black should (??) mean that we get few if any pycodestyle messages,
         # but run just to be sure
