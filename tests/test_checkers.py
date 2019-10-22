@@ -16,26 +16,26 @@ def test_pylint():
     assert len(msgs) == 4
 
     msg = msgs[0]
-    assert msg.msg_id == "C0330"
-    assert msg.symbol == "bad-continuation"
+    assert msg.code == "C0330"
+    assert msg.description == "bad-continuation"
     assert msg.line == 26
     assert msg.column == 0
 
     msg = msgs[1]
-    assert msg.msg_id == "C0330"
-    assert msg.symbol == "bad-continuation"
+    assert msg.code == "C0330"
+    assert msg.description == "bad-continuation"
     assert msg.line == 40
     assert msg.column == 0
 
     msg = msgs[2]
-    assert msg.msg_id == "W0109"
-    assert msg.symbol == "duplicate-key"
+    assert msg.code == "W0109"
+    assert msg.description == "duplicate-key"
     assert msg.line == 55
     assert msg.column == 9
 
     msg = msgs[3]
-    assert msg.msg_id == "R0201"
-    assert msg.symbol == "no-self-use"
+    assert msg.code == "R0201"
+    assert msg.description == "no-self-use"
     assert msg.line == 54
     assert msg.column == 1
 
@@ -49,10 +49,9 @@ def test_pycodestyle():
 
     code_lines = {}
     for msg in msgs:
-        code, line = msg[3], msg[1]
-        if code not in code_lines:
-            code_lines[code] = []
-        code_lines[code].append(line)
+        if msg.code not in code_lines:
+            code_lines[msg.code] = []
+        code_lines[msg.code].append(msg.line)
 
     # check we have all the errors codes
     assert sorted(code_lines.keys()) == [
@@ -101,12 +100,12 @@ def test_pyflakes():
     assert len(msgs) == 2
 
     msg = msgs[0]
-    assert isinstance(msg, MultiValueRepeatedKeyLiteral)
-    assert msg.lineno == 55
-    assert msg.col == 10
+    assert msg.code == "MultiValueRepeatedKeyLiteral"
+    assert msg.line == 55
+    assert msg.column == 10
 
     msg = msgs[1]
-    assert isinstance(msg, MultiValueRepeatedKeyLiteral)
-    assert msg.lineno == 55
-    assert msg.col == 20
+    assert msg.code == "MultiValueRepeatedKeyLiteral"
+    assert msg.line == 55
+    assert msg.column == 20
 
