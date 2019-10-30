@@ -1,13 +1,21 @@
 import re
 from pathlib import Path
-from typing import List, Sequence
+from typing import List
 
 import black
 import libcst as cst
-
 from black import reformat_one, FileMode, Report, WriteBack, Changed
-from libcst import SimpleString, Comment, EmptyLine, CSTNodeT, Module
-from libcst.metadata import BasicPositionProvider, WhitespaceInclusivePositionProvider
+from libcst import (
+    Comment,
+    EmptyLine,
+    CSTNodeT,
+    Module,
+    TrailingWhitespace,
+)
+from libcst.metadata import (
+    WhitespaceInclusivePositionProvider,
+    PositionProvider,
+)
 
 MAX_LINE_LENGTH = black.DEFAULT_LINE_LENGTH
 
@@ -48,50 +56,58 @@ class Black:
 
 class CommentWrap(cst.CSTTransformer):
 
-    METADATA_DEPENDENCIES = (WhitespaceInclusivePositionProvider,)
+    METADATA_DEPENDENCIES = (PositionProvider, WhitespaceInclusivePositionProvider)
 
     def __init__(self, max_line_length=MAX_LINE_LENGTH):
         super().__init__()
         self._max_line_length = max_line_length
 
-    def leave_Module(
-        self, original_node: Module, updated_node: Module
-    ):
-        orig_header = updated_node.header
-        if orig_header:
-            updated_node = updated_node.with_changes(
-                header=self._wrap_leading_lines(orig_header)
-            )
+    def on_leave(self, original_node: CSTNodeT, updated_node: CSTNodeT):
+        return self._wrap_leading_lines(original_node, updated_node)
 
-        return updated_node
+    def _wrap_leading_lines(self, original_node, updated_node: CSTNodeT) -> CSTNodeT:
 
-    def on_leave(
-        self, original_node: CSTNodeT, updated_node: CSTNodeT
-    ):
-        updated_node = super().on_leave(original_node, updated_node)
-        orig_leading_lines = getattr(original_node, 'leading_lines', None)
-        if orig_leading_lines:
-            updated_node.leading_lines = self._wrap_leading_lines(orig_leading_lines)
+        orig_leading_lines = getattr(updated_node, "leading_lines", None)
+        if isinstance(updated_node, Module):
+            orig_leading_lines = updated_node.header
+        orig_trailing_whitespace = getattr(updated_node, "trailing_whitespace", None)
 
-        return updated_node
+        if not orig_leading_lines and not orig_trailing_whitespace:
+            return updated_node
 
-    def _wrap_leading_lines(self, orig: Sequence[EmptyLine]) -> Sequence[EmptyLine]:
-        if len(orig) == 0:
-            return orig
+        new_ll, unwrapped = [], list(orig_leading_lines)
+        new_tw = orig_trailing_whitespace
 
-        wrapped, unwrapped = [], list(orig)
+        if new_tw and new_tw.comment:
+            comment = new_tw.comment
+            pos = self.get_metadata(WhitespaceInclusivePositionProvider, comment)
+            start_col = pos.start.column
+            if start_col + len(comment.value) > self._max_line_length:
+                new_tw = TrailingWhitespace()
+                # inline comment overflows line length and so should be moved to a
+                # leading line
+                if len(unwrapped) == 0:
+                    unwrapped.append(EmptyLine(comment=Comment(value=comment.value)))
+                else:
+                    unwrapped[-1].comment += f"; {comment.value}"
+
+        # default start column for comment to that of node
+        pos = self.get_metadata(PositionProvider, original_node)
+        start_col = pos.start.column
 
         wrapped_from_prev_line = ""
-        start_col = 0
         while len(unwrapped) > 0:
             line = unwrapped.pop(0)
             comment = line.comment
             if not comment:
-                wrapped.append(line)
+                new_ll.append(line)
                 continue
 
-            pos = self.get_metadata(WhitespaceInclusivePositionProvider, comment)
-            start_col = pos.start.column
+            pos = self.get_metadata(
+                WhitespaceInclusivePositionProvider, comment, default=None
+            )
+            if pos:
+                start_col = pos.start.column
             if start_col > self._max_line_length:
                 # not quite sure how to handle this yet, so fail and investigate
                 raise ValueError(
@@ -104,7 +120,7 @@ class CommentWrap(cst.CSTTransformer):
                 and start_col + len(comment.value) <= self._max_line_length
             ):
                 # existing comment can stay as-is
-                wrapped.append(line)
+                new_ll.append(line)
                 continue
 
             updated_comment, wrapped_from_prev_line = self._get_next_comment(
@@ -112,7 +128,7 @@ class CommentWrap(cst.CSTTransformer):
                 wrapped_from_prev_line=wrapped_from_prev_line,
                 start_col=start_col,
             )
-            wrapped.append(line.with_changes(comment=updated_comment))
+            new_ll.append(line.with_changes(comment=updated_comment))
 
         # add additional comment lines for remainder, if needed
         while len(wrapped_from_prev_line) > 0:
@@ -121,15 +137,25 @@ class CommentWrap(cst.CSTTransformer):
                 wrapped_from_prev_line=wrapped_from_prev_line,
                 start_col=start_col,
             )
-            wrapped.append(EmptyLine(comment=updated_comment))
+            new_ll.append(EmptyLine(comment=updated_comment))
 
-        return wrapped
+        if isinstance(updated_node, Module):
+            updated_node = updated_node.with_changes(header=new_ll)
+        else:
+            updated_node = updated_node.with_changes(leading_lines=new_ll)
 
-    def _get_next_comment(self, value: str, wrapped_from_prev_line: str, start_col: int):
+        if orig_trailing_whitespace is not None:
+            updated_node = updated_node.with_changes(trailing_whitespace=new_tw)
+
+        return updated_node
+
+    def _get_next_comment(
+        self, value: str, wrapped_from_prev_line: str, start_col: int
+    ):
         wrapped_value = value
         if wrapped_from_prev_line:
             wrapped_value = (
-                "# " + wrapped_from_prev_line + re.sub("^# ?", "", wrapped_value)
+                "# " + wrapped_from_prev_line + re.sub("^# ?", " ", wrapped_value)
             )
 
         if start_col + len(wrapped_value) <= self._max_line_length:
@@ -145,4 +171,3 @@ class CommentWrap(cst.CSTTransformer):
 
         wrapped_for_next_line = wrapped_value[last_idx:].lstrip()
         return Comment(value=wrapped_value[:last_idx]), wrapped_for_next_line
-
