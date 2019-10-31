@@ -111,6 +111,19 @@ def test_black():
         ),
         (
             """
+            def foo():
+                # above line
+                a = 1  # some inline comment
+            """,
+            """
+            def foo():
+                # above line. some
+                # inline comment
+                a = 1
+            """,
+        ),
+        (
+            """
             # this is a pretend long comment
             """,
             """
