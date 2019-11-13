@@ -136,15 +136,19 @@ class CommentWrap(cst.CSTTransformer):
         node_pos = self.get_metadata(PositionProvider, original_node)
         start_col = node_pos.start.column
 
+        cur_line_idx = -1
+        next_comment_idx = 0
         while len(leading_lines) > 0:
             line = leading_lines.pop(0)
+            cur_line_idx += 1
             comment = line.comment
 
             if not comment:
-                # empty line has no comment, so nothing to wrap
+                # empty line has no comment, so nothing to
                 new_ll.append(line)
                 continue
 
+            next_comment_idx = cur_line_idx + 1
             start_col = self._get_start_column(comment, start_col)
             end_col = start_col + len(comment.value)
 
@@ -168,7 +172,8 @@ class CommentWrap(cst.CSTTransformer):
                 wrapped_from_prev_line=wrapped_from_prev_line,
                 start_col=start_col,
             )
-            new_ll.append(EmptyLine(comment=updated_comment))
+            new_ll.insert(next_comment_idx, EmptyLine(comment=updated_comment))
+            next_comment_idx += 1
 
         return new_ll
 

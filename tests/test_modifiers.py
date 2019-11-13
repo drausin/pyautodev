@@ -101,20 +101,16 @@ from pyautodev.modifiers import CommentWrap
         (
                 """
                 # this is a pretend long comment
+                
+                def foo():
+                    return True
                 """,
                 """
                 # this is a pretend long
                 # comment
-                """,
-        ),
-        (
-                """
-                # this is a pretend long comment
-                # that also wraps
-                """,
-                """
-                # this is a pretend long
-                # comment that also wraps
+                
+                def foo():
+                    return True
                 """,
         ),
     ],
